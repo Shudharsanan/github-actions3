@@ -69,7 +69,21 @@ jobs:
         FILE_NAME="${{ github.event.inputs.fileName }}"
 
         # Ensure the Azure File Share is mounted or use the Azure SDK to download the file
-        mkdir -p $AZURE_FILE_SHARE_DIR  # Ensure the directory exists
+    - name: Locate the File Share Directory and Ensure It Exists
+      run: |
+        # Debug the value of the directory variable
+        echo "Azure File Share Directory: $AZURE_FILE_SHARE_DIR"
+    
+        # If the directory is empty, set a default path
+        if [ -z "$AZURE_FILE_SHARE_DIR" ]; then
+          AZURE_FILE_SHARE_DIR="/mnt/azurefileshare"  # Default location
+          echo "Using default path: $AZURE_FILE_SHARE_DIR"
+        fi
+    
+        # Ensure the directory exists
+        mkdir -p $AZURE_FILE_SHARE_DIR
+        
+                
         az storage file download --account-name $STORAGE_ACCOUNT_NAME --share-name $FILE_SHARE_NAME --path $FILE_NAME --dest $AZURE_FILE_SHARE_DIR/$FILE_NAME --auth-mode key --account-key ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
 
         # Run the Python file directly from the Azure File Share
