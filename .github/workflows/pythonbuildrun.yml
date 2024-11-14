@@ -68,19 +68,41 @@ jobs:
         FILE_SHARE_NAME="${{ github.event.inputs.fileShareName }}"
         FILE_NAME="${{ github.event.inputs.fileName }}"
 
-        # Ensure the Azure File Share is mounted or use the Azure SDK to download the file
-    - name: Locate the File Share Directory and Ensure It Exists
+
+
+
+
+    - name: Download Python File from Azure File Share and Run
       run: |
-        # Set a directory in /tmp (this is writable)
-        AZURE_FILE_SHARE_DIR="/tmp/azurefileshare"
-        
-        # Debug the value of the directory variable
-        echo "Azure File Share Directory: $AZURE_FILE_SHARE_DIR"
+        # Set the directory path for downloaded files
+        AZURE_FILE_SHARE_DIR="/tmp/azurefileshare"  # Using /tmp instead of /mnt
     
-        # Create the directory (mkdir -p will not fail if it exists)
-        mkdir -p $AZURE_FILE_SHARE_DIR
+        # Debug and check if the directory is set correctly
+        echo "Using Azure File Share Directory: $AZURE_FILE_SHARE_DIR"
         
-                
+        # Create the directory if it doesn't exist
+        mkdir -p $AZURE_FILE_SHARE_DIR
+    
+        # Define the storage account and file share
+        STORAGE_ACCOUNT_NAME="${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}"  # Replace with your GitHub secret
+        STORAGE_ACCOUNT_KEY="${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}"    # Replace with your GitHub secret
+    
+        # Debugging output to ensure these variables are being set correctly
+        echo "Storage Account Name: $STORAGE_ACCOUNT_NAME"
+        echo "Storage Account Key: $STORAGE_ACCOUNT_KEY"  # Do not print this key in production, it's only for debugging here
+    
+        # Download the Python file from Azure File Share to this directory
+        az storage file download --account-name $STORAGE_ACCOUNT_NAME --account-key $STORAGE_ACCOUNT_KEY --share-name $FILE_SHARE_NAME --path $FILE_NAME --dest $AZURE_FILE_SHARE_DIR/$FILE_NAME
+    
+        # Run the downloaded Python file
+        python3 $AZURE_FILE_SHARE_DIR/$FILE_NAME
+
+
+
+
+
+  
+
         az storage file download --account-name $STORAGE_ACCOUNT_NAME --share-name $FILE_SHARE_NAME --path $FILE_NAME --dest $AZURE_FILE_SHARE_DIR/$FILE_NAME --auth-mode key --account-key ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
 
         # Run the Python file directly from the Azure File Share
