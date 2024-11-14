@@ -71,16 +71,13 @@ jobs:
         # Ensure the Azure File Share is mounted or use the Azure SDK to download the file
     - name: Locate the File Share Directory and Ensure It Exists
       run: |
+        # Set a directory in /tmp (this is writable)
+        AZURE_FILE_SHARE_DIR="/tmp/azurefileshare"
+        
         # Debug the value of the directory variable
         echo "Azure File Share Directory: $AZURE_FILE_SHARE_DIR"
     
-        # If the directory is empty, set a default path
-        if [ -z "$AZURE_FILE_SHARE_DIR" ]; then
-          AZURE_FILE_SHARE_DIR="/mnt/azurefileshare"  # Default location
-          echo "Using default path: $AZURE_FILE_SHARE_DIR"
-        fi
-    
-        # Ensure the directory exists
+        # Create the directory (mkdir -p will not fail if it exists)
         mkdir -p $AZURE_FILE_SHARE_DIR
         
                 
