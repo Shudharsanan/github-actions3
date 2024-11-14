@@ -1,67 +1,76 @@
 name: Build and Run
-on: # Allows you to run this workflow manually from the Actions tab
+
+on:
   workflow_dispatch: # Allows you to run this workflow manually from the Actions tab
     inputs:
       resourceGroupName:
-        description: 'azure resource group name'
+        description: 'Azure resource group name'
         required: true
-        default: 'demoGroup'
+        default: 'rg-dp100-labs'
       region:
-        description: 'azure region'
+        description: 'Azure region'
         required: true
-        default: 'east us'
+        default: 'South India'
       subscriptionId:
-        description: 'azure subscription id'
+        description: 'Azure subscription ID'
         required: true
-      filename:
-        description: 'file name to upload to blob container'
-        required: false
-        default: 'sample-file-blob.txt'
+      fileShareName:
+        description: 'Azure File Share name'
+        required: true
+      fileName:
+        description: 'Python file name to run from the File Share'
+        required: true
+        default: 'github_actions_testing.py' # Name of the Python script you want to run
 
-jobs: # This workflow contains a single job called "build"
-  build: # The job name
-    runs-on: ubuntu-latest # This job will run on Ubuntu  
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-    steps: # The job contains steps that define tasks to perform in the job
-    - name: Checkout Repository # This step checks out a copy of your repository
-      uses: actions/checkout@v3 # This is the action you are using
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3 # Checkout the repository to access files
 
-    - name: 'Log into Azure using github secret GITHUBACTION_SPN'
+    - name: Log into Azure using github secret GITHUBACTION_SPN
       uses: Azure/login@v1.5.1 
       with:
-        creds: ${{ secrets.GITHUBACTION_SPN }} # This references the secret you created earlier
-        enable-AzPSSession: true # This enables the Az Powershell session
-          
+        creds: ${{ secrets.GITHUBACTION_SPN }} # Azure Service Principal credentials
+        enable-AzPSSession: true # Enables Azure PowerShell session
+
     - name: Set up Python
-      uses: actions/setup-python@v3 # This sets up a Python environment
+      uses: actions/setup-python@v3
       with:
         python-version: 3.11.4  # This sets the version of Python to use
 
-    - name: Install Dependencies # This installs dependencies using pip
+    - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install setuptools
+        pip install azure-storage-file-share  # Install SDK to interact with Azure File Share
 
-    - name: Build Python Package
-      run: pip install --editable ./create_azstorage # This installs the package
-
-    - name: Output Input Variables # This outputs the input variables for debugging
+    - name: Output Input Variables
       run: |
-        echo "resourceGroupName: ${{ github.event.inputs.resourceGroupName }}" # This outputs the input variables for debugging
+        echo "resourceGroupName: ${{ github.event.inputs.resourceGroupName }}"
         echo "subscriptionId: ${{ github.event.inputs.subscriptionId }}"
-        echo "filename: ${{ github.event.inputs.filename }}"
-    
-    - name: List Files for debugging 
-      run: tree # This lists the files in the current directory for debugging
+        echo "fileShareName: ${{ github.event.inputs.fileShareName }}"
+        echo "fileName: ${{ github.event.inputs.fileName }}"
 
-    - name: Locate my command tool file location for debugging
+    - name: List Files for debugging
+      run: tree  # This lists the files in the current directory for debugging
+
+    - name: Locate Python file in Azure File Share and run
       run: |
-        which create_azstorage_cli # This lists the files in the current directory for debugging
-        
-    - name: Run python command
-      run: |
-        create_azstorage_cli \
-          --resourcegroupname ${{ github.event.inputs.resourceGroupName }} \
-          --subscriptionid ${{ github.event.inputs.subscriptionId }} \
-          --filename ${{ github.event.inputs.filename }} 
+        # Install the Azure SDK and authenticate
+        pip install azure-storage-file-share
+
+        # Define Azure connection details
+        STORAGE_ACCOUNT_NAME="code-391ff5ac-6576-460f-ba4d-7e03433c68b6"  # Replace with your actual storage account name
+        FILE_SHARE_NAME="${{ github.event.inputs.fileShareName }}"
+        FILE_NAME="${{ github.event.inputs.fileName }}"
+
+        # Ensure the Azure File Share is mounted or use the Azure SDK to download the file
+        mkdir -p $AZURE_FILE_SHARE_DIR  # Ensure the directory exists
+        az storage file download --account-name $STORAGE_ACCOUNT_NAME --share-name $FILE_SHARE_NAME --path $FILE_NAME --dest $AZURE_FILE_SHARE_DIR/$FILE_NAME --auth-mode key --account-key ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }}
+
+        # Run the Python file directly from the Azure File Share
+        python3 $AZURE_FILE_SHARE_DIR/$FILE_NAME
